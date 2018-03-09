@@ -21,9 +21,9 @@ W = 100e-9;
 num = 1e4;                              % Number of electrons
 T = 300;                                % Temperature (Kelvin)
 V = 0.1;                                % Voltage applied
-vth_e = sqrt((2*kb*T)/(meff));          % Thermal velocity of an electron
-vth_ex = (vth_e/sqrt(2))*randn(num, 1); % X-component of thermal velocity
-vth_ey = (vth_e/sqrt(2))*randn(num, 1); % Y-component of thermal velocity
+vth_e = sqrt((kb*T)/(meff));            % Thermal velocity of an electron
+vth_ex = (vth_e)*randn(num, 1);         % X-component of thermal velocity
+vth_ey = (vth_e)*randn(num, 1);         % Y-component of thermal velocity
 vthdis = sqrt(vth_ex.^2+vth_ey.^2);     % Distribution of electrons thermal velocity
 vthav = mean(sqrt(vth_ex.^2+vth_ey.^2));% Average of thermal velocity 
 MFP = vthav*tmn;                        % Mean free path of electrons
@@ -37,27 +37,31 @@ Elec(:, 1) = L*rand(num, 1);
 Elec(:, 2) = W*rand(num, 1);
 Elec(:, 3) = vth_ex;
 Elec(:, 4) = vth_ey;
-previous = zeros(num, 4);
+% previous = zeros(num, 4);
 previous = Elec;
 
 % Electron simulation
-figure(1);
-t = 1e-11;                          % Total Time
+t = 1e-12;                          % Total Time
 dt = 1e-14;                         % Time Step
 Psat = 1 - exp(-dt/tmn);            % Exponential Scattering Probability
 numplot = 5;                        % Number of electron plotted
 color = hsv(numplot);               % Colour Setup
+f1 = figure;
+f2 = figure;
+f3 = figure;
+f4 = figure;
+f5 = figure;
     
 for n = 0:dt:t 
     
     Elec(:, 3) = Elec(:, 3)+ accel*dt;
     
-    if Psat > rand()
-        vth_ex = (vth_e/sqrt(2))*randn(num, 1); 
-        vth_ey = (vth_e/sqrt(2))*randn(num, 1);
-        Elec(:, 3) = vth_ex;
-        Elec(:, 4) = vth_ey;
-    end
+%     if Psat > rand()
+%         vth_ex = (vth_e/sqrt(2))*randn(num, 1); 
+%         vth_ey = (vth_e/sqrt(2))*randn(num, 1);
+%         Elec(:, 3) = vth_ex;
+%         Elec(:, 4) = vth_ey;
+%     end
     
     for p = 1:1:num
         previous(p, 1) = Elec(p, 1);
@@ -67,7 +71,7 @@ for n = 0:dt:t
     end
     
     % Plotting limited amount of electrons
-    figure(1)
+    set(0, 'CurrentFigure', f1)
     for q = 1:1:numplot
         title('Electrons movement');
         plot([previous(q, 1), Elec(q, 1)], [previous(q, 2), Elec(q,2)], 'color', color(q, :))
@@ -95,19 +99,27 @@ for n = 0:dt:t
     
     % Plotting average temperature
     vaver = mean(sqrt(Elec(:, 3).^2 + Elec(:, 4).^2)); % Average thermal velocity
-    aveT = (0.5*meff*vaver^2)/kb;              % Average temperature
-    figure(2)
+    aveT = (meff*vaver^2)/(kb);              % Average temperature
+    set(0, 'CurrentFigure', f2)
     scatter(n, aveT, 'r.')
     axis tight
     title('Average temperature');
     hold on
     
     % Plotting Current density
-    figure(3)
+    set(0, 'CurrentFigure', f3)
     I = vaver*num*Ex*q_0;                      % Drift current of electron
     scatter(n, I, 'g.')
     axis tight
     title('Current density of electrons');
     hold on
-    %pause(0.01)
+    pause(0.001)
+    
 end
+
+% Electron Density map
+set(0, 'CurrentFigure', f4)
+hist3(Elec(:, 1:2), [50 50]);
+
+% Temperature map
+%set(0, 'CurrentFigure', f5)
