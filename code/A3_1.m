@@ -113,13 +113,50 @@ for n = 0:dt:t
     axis tight
     title('Current density of electrons');
     hold on
-    pause(0.001)
+    pause(1e-7)
     
 end
 
 % Electron Density map
 set(0, 'CurrentFigure', f4)
 hist3(Elec(:, 1:2), [50 50]);
+Eden = hist3(Elec(:, 1:2), [50 50]);
 
 % Temperature map
-%set(0, 'CurrentFigure', f5)
+set(0, 'CurrentFigure', f5)
+Vend = sqrt(Elec(:, 3).^2 + Elec(:, 4).^2);
+Tend = (meff.*Vend.^2)./kb;
+% hold on
+% hist3(Elec(:, 1:2), [50 50]);
+% Eden1 = Eden';
+% Eden1(size(Eden, 1)+1, size(Eden, 2)+1) = 0;
+% Xe = linspace(min(Elec(:, 1)), max(Elec(:, 1)), size(Eden, 1)+1);
+% Ye = linspace(min(Elec(:, 2)), max(Elec(:, 2)), size(Eden, 1)+1);
+% pcolor(Tend);
+[binx, biny] = meshgrid(0:L/50:L, 0:W/50:W);
+zcheck = zeros(51, 51);
+tempcheck = zeros(51, 51);
+counter = 0;
+vtotal = 0;
+for i = 1:50
+    txmn = binx(1,i);
+    txmx = binx(1, i+1);
+    for r = 1:50
+        tymn = biny(r, 1);
+        tymx = biny(r+1, 1);
+        for mm = 1:num
+            if(Elec(mm,1)>txmn & Elec(mm,1)<txmx & Elec(mm,2)<tymx & Elec(mm,2)>tymn)
+                counter = counter + 1;
+                zcheck(i, r) = zcheck(i, r)+1;
+                vtotal = vtotal + sqrt(Elec(mm, 3)^2+Elec(mm, 4)^2);
+                if(counter ~= 0)
+                    tempcheck(i,r) = meff*(vtotal^2)/(counter*kb);
+                end
+            end
+        end
+        vtotal = 0;
+        counter = 0;
+    end
+end
+surf(binx, biny,zcheck)
+title("Temperature density of electrons")
