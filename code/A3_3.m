@@ -17,6 +17,81 @@ tmn = 0.2e-12;                          % mean time between collisions
 L = 200e-9;
 W = 100e-9;
 
+% Setting variables for G matrix
+nx = 200;               % Length of the region
+ny = 100;               % Width of the region
+G = sparse(nx*ny);      % Initialize a G matrix
+D = zeros(1, nx*ny);    % Initialize a matrix for G matrix operation
+S = zeros(ny, nx);      % Initialize a matrix for sigma
+sigma1 = .01;           % Setting up parameter of sigma in different region
+sigma2 = 1;
+box = [nx*2/5 nx*3/5 ny*2/5 ny*3/5]; % Setting up the bottle neck
+
+%Sigma matrix setup
+sigma = zeros(nx, ny);
+for i = 1:nx
+    for j = 1:ny
+        if i > box(1) && i < box(2) && (j < box(3)||j > box(4))
+            sigma(i, j) = sigma1;
+        else
+            sigma(i, j) = sigma2;
+        end
+    end
+end
+
+% Implement the G matrix with the bottle neck condition in the region
+for i = 1:nx
+    for j = 1:ny
+        
+        n = j + (i-1)*ny;
+        nip = j + (i+1-1)*ny;
+        nim = j + (i-1-1)*ny;
+        njp = j + 1 + (i-1)*ny;
+        njm = j - 1 + (i-1)*ny;
+        
+        if i == 1
+            G(n, :) = 0;
+            G(n, n) = 1;
+            D(n) = 1;
+        elseif i == nx
+            G(n, :) = 0;
+            G(n, n) = 1;
+            D(n) = 0;
+        elseif j == 1
+            G(n, nip) = (sigma(i+1, j) + sigma(i,j))/2;
+            G(n, nim) = (sigma(i-1, j) + sigma(i,j))/2;
+            G(n, njp) = (sigma(i, j+1) + sigma(i,j))/2;            
+            G(n, n) = -(G(n,nip)+G(n,nim)+G(n,njp));
+        elseif j == ny
+            G(n, nip) = (sigma(i+1, j) + sigma(i,j))/2;
+            G(n, nim) = (sigma(i-1, j) + sigma(i,j))/2;
+            G(n, njm) = (sigma(i, j-1) + sigma(i,j))/2;
+            G(n, n) = -(G(n,nip)+G(n,nim)+G(n,njm));
+        else
+            G(n, nip) = (sigma(i+1, j) + sigma(i,j))/2;
+            G(n, nim) = (sigma(i-1, j) + sigma(i,j))/2;
+            G(n, njp) = (sigma(i, j+1) + sigma(i,j))/2;
+            G(n, njm) = (sigma(i, j-1) + sigma(i,j))/2;
+            G(n, n) = -(G(n,nip)+G(n,nim)+G(n,njp)+G(n,njm));
+        end
+    end
+end
+
+% Calculating the voltage
+V = G\D';
+
+% Inverting the G matrix
+X = zeros(ny, nx, 1);
+for i = 1:nx
+    for j = 1:ny
+        n = j + (i-1)*ny;
+        X(j,i) = V(n);
+    end
+end
+
+% Calculating the electric field from voltage
+[Ex, Ey] = gradient(X);
+
 % Current Condition and variables
 num = 1e4;                              % Number of electrons
 T = 300;                                % Temperature (Kelvin)
@@ -27,9 +102,10 @@ vth_ey = (vth_e)*randn(num, 1);         % Y-component of thermal velocity
 vthdis = sqrt(vth_ex.^2+vth_ey.^2);     % Distribution of electrons thermal velocity
 vthav = mean(sqrt(vth_ex.^2+vth_ey.^2));% Average of thermal velocity 
 MFP = vthav*tmn;                        % Mean free path of electrons
-Ex = V/L;                               % Electric field on x-axis
-F = Ex*q_0;                             % Force applied to electrons
-accel = F/meff;                         % Acceleration of electrons
+Fx = -Ex*q_0;                           % X-component of force applied to electrons
+Fy = -Ey*q_0;                           % Y-component of force applied to electrons
+accelx = Fx/meff;                       % X-component of acceleration of electrons
+accely = Fy/meff;                       % Y-component of acceleration of electrons
 
 % Electrons Defining
 Elec = zeros(num, 4);
@@ -37,32 +113,66 @@ Elec(:, 1) = L*rand(num, 1);
 Elec(:, 2) = W*rand(num, 1);
 Elec(:, 3) = vth_ex;
 Elec(:, 4) = vth_ey;
-% previous = zeros(num, 4);
 previous = Elec;
 
-% Electron simulation
-t = 1e-12;                          % Total Time
+% Setting up electrons and spawning limitation
+for m = 1:1:num
+    nrep = 1;
+    while nrep
+        xr = L*rand();
+        yr = W*rand();
+        if xr > 80e-9 && xr < 120e-9 && (yr > 60e-9 ||yr < 40e-9)
+            nrep = 1;
+        else
+            Elec(m, 1) = xr;
+            Elec(m, 2) = yr;
+            nrep = 0;
+        end
+    end
+end
+
+% Electron simulation variables
+t = 1e-11;                          % Total Time
 dt = 1e-14;                         % Time Step
 Psat = 1 - exp(-dt/tmn);            % Exponential Scattering Probability
 numplot = 5;                        % Number of electron plotted
 color = hsv(numplot);               % Colour Setup
 f1 = figure;
-f2 = figure;
-f3 = figure;
+% f2 = figure;
+% f3 = figure;
 % f4 = figure;
 % f5 = figure;
+
+% Setting up rectangles boundaries
+set(0, 'CurrentFigure', f1)
+rectangle('Position', [80e-9 0 40e-9 40e-9])
+rectangle('Position', [80e-9 60e-9 40e-9 40e-9])
+hold on
     
+% Electrons simulation
 for n = 0:dt:t 
     
-    Elec(:, 3) = Elec(:, 3)+ accel*dt;
-    
+
+    for i = 1:1:num
+        
+        % Rounding position of electrons
+        Dimx(i) = ceil(Elec(i, 1)*10^9);
+        Dimy(i) = ceil(Elec(i, 2)*10^9);
+        
+        % Adding acceleration of the electric field into the electrons
+        Elec(i, 3) = Elec(i, 3) + accelx(Dimy(i), Dimx(i))*dt;
+        Elec(i, 4) = Elec(i, 4) + accely(Dimy(i), Dimx(i))*dt;
+        
+    end
+     
+    % Part 2 Simulation
     if Psat > rand()
         vth_ex = (vth_e/sqrt(2))*randn(num, 1); 
         vth_ey = (vth_e/sqrt(2))*randn(num, 1);
         Elec(:, 3) = vth_ex;
         Elec(:, 4) = vth_ey;
     end
-    
+           
     for p = 1:1:num
         previous(p, 1) = Elec(p, 1);
         previous(p, 2) = Elec(p, 2);
@@ -74,7 +184,8 @@ for n = 0:dt:t
     set(0, 'CurrentFigure', f1)
     for q = 1:1:numplot
         title('Electrons movement');
-        plot([previous(q, 1), Elec(q, 1)], [previous(q, 2), Elec(q,2)], 'color', color(q, :))
+        plot([previous(q, 1), Elec(q, 1)], [previous(q, 2), Elec(q,2)],...
+            'color', color(q, :))
         xlim([0 L])
         ylim([0 W])
         hold on
@@ -85,36 +196,66 @@ for n = 0:dt:t
         % Looping on x-axis
         if Elec(o, 1) > L                       
             Elec(o, 1) = Elec(o, 1) - L;
-            previous = Elec;
+%             Elec(o,1) = previous(o,1) + 1;
+%             previous = Elec;
         end
         if Elec(o, 1) < 0
             Elec(o, 1) = Elec(o, 1) + L;
-            previous = Elec;
+%             Elec(o,1) = previous(o,1) - 1;
+%             previous = Elec;
         end
         % Reflecting on y-axis
         if Elec(o, 2) > W || Elec(o, 2) < 0
             Elec(o, 4) = -1*Elec(o, 4);
+            Elec(o,2) = previous(o,2);
+        end
+        % Part 3 Simulation, boundaries for electrons movements
+        if Elec(o, 1) > 80e-9 && Elec(o, 1) < 120e-9 &&...
+                (Elec(o, 2) < 40e-9 || Elec(o, 2) > 60e-9)
+            % in the box
+            if Elec(o, 2) < 40e-9
+                % lower box
+                if previous(o, 2) > 40e-9
+                    % in hole
+                    Elec(o, 4) = -1*Elec(o, 4);
+                    Elec(o,2) = previous(o,2);
+                else
+                    Elec(o, 3) = -1*Elec(o, 3);
+                    Elec(o,1) = previous(o,1);
+                end
+            end
+            if Elec(o, 2) > 60e-9
+                % upper box
+                if previous(o, 2) < 60e-9
+                    % in hole
+                    Elec(o, 4) = -1*Elec(o, 4);
+                    Elec(o,2) = previous(o,2);
+                else
+                    Elec(o, 3) = -1*Elec(o, 3);
+                    Elec(o,1) = previous(o,1);
+                end
+            end
         end
     end
     
-    % Plotting average temperature
-    vaver = mean(sqrt(Elec(:, 3).^2 + Elec(:, 4).^2)); % Average thermal velocity
-    aveT = (meff*vaver^2)/(kb);              % Average temperature
-    set(0, 'CurrentFigure', f2)
-    scatter(n, aveT, 'r.')
-    axis tight
-    title('Average temperature');
-    hold on
-    
-    % Plotting Current density
-    set(0, 'CurrentFigure', f3)
-    I = vaver*num*Ex*q_0;                      % Drift current of electron
-    scatter(n, I, 'g.')
-    axis tight
-    title('Current density of electrons');
-    hold on
-    pause(1e-7)
-    
+%     % Plotting average temperature
+%     vaver = mean(sqrt(Elec(:, 3).^2 + Elec(:, 4).^2)); % Average thermal velocity
+%     aveT = (meff*vaver^2)/(kb);              % Average temperature
+%     set(0, 'CurrentFigure', f2)
+%     scatter(n, aveT, 'r.')
+%     axis tight
+%     title('Average temperature');
+%     hold on
+%     
+%     % Plotting Current density
+%     set(0, 'CurrentFigure', f3)
+%     I = vaver*num*Ex*q_0;                      % Drift current of electron
+%     scatter(n, I, 'g.')
+%     axis tight
+%     title('Current density of electrons');
+%     hold on
+    pause(0.01)
+%     
 end
 
 % Electron Density map

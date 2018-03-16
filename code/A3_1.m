@@ -56,12 +56,12 @@ for n = 0:dt:t
     
     Elec(:, 3) = Elec(:, 3)+ accel*dt;
     
-%     if Psat > rand()
-%         vth_ex = (vth_e/sqrt(2))*randn(num, 1); 
-%         vth_ey = (vth_e/sqrt(2))*randn(num, 1);
-%         Elec(:, 3) = vth_ex;
-%         Elec(:, 4) = vth_ey;
-%     end
+    if Psat > rand()
+        vth_ex = (vth_e/sqrt(2))*randn(num, 1); 
+        vth_ey = (vth_e/sqrt(2))*randn(num, 1);
+        Elec(:, 3) = vth_ex;
+        Elec(:, 4) = vth_ey;
+    end
     
     for p = 1:1:num
         previous(p, 1) = Elec(p, 1);
@@ -85,11 +85,11 @@ for n = 0:dt:t
         % Looping on x-axis
         if Elec(o, 1) > L                       
             Elec(o, 1) = Elec(o, 1) - L;
-            previous = Elec;
+%             previous = Elec;
         end
         if Elec(o, 1) < 0
             Elec(o, 1) = Elec(o, 1) + L;
-            previous = Elec;
+%             previous = Elec;
         end
         % Reflecting on y-axis
         if Elec(o, 2) > W || Elec(o, 2) < 0
@@ -120,12 +120,12 @@ end
 % Electron Density map
 set(0, 'CurrentFigure', f4)
 hist3(Elec(:, 1:2), [50 50]);
-Eden = hist3(Elec(:, 1:2), [50 50]);
+% Eden = hist3(Elec(:, 1:2), [50 50]);
 
 % Temperature map
 set(0, 'CurrentFigure', f5)
-Vend = sqrt(Elec(:, 3).^2 + Elec(:, 4).^2);
-Tend = (meff.*Vend.^2)./kb;
+% Vend = sqrt(Elec(:, 3).^2 + Elec(:, 4).^2);
+% Tend = (meff.*Vend.^2)./kb;
 % hold on
 % hist3(Elec(:, 1:2), [50 50]);
 % Eden1 = Eden';
