@@ -1,6 +1,12 @@
 %% Assignment 3
-%% 
-% 
+%% Part 1
+% In assignment 3, we are now implementing the result of assignment 2 into
+% the electron simulation with bottle-neck of assignment, which is applying
+% a voltage across the whole region with the bottle-neck of the simulation.
+%
+% In the first part, we simply have to apply a constant voltage in the
+% x-direction across the whole region to familarize ourselves for the
+% later full implementation.
 
 % Reset Everything
 close all
@@ -31,31 +37,35 @@ Ex = V/L;                               % Electric field on x-axis
 F = Ex*q_0;                             % Force applied to electrons
 accel = F/meff;                         % Acceleration of electrons
 
+fprintf('Ex = %i\n', Ex);
+fprintf('F = %i\n', F);
+fprintf('Acceleration = %i\n', accel);
+
 % Electrons Defining
 Elec = zeros(num, 4);
 Elec(:, 1) = L*rand(num, 1);
 Elec(:, 2) = W*rand(num, 1);
 Elec(:, 3) = vth_ex;
 Elec(:, 4) = vth_ey;
-% previous = zeros(num, 4);
 previous = Elec;
 
 % Electron simulation
-t = 1e-12;                          % Total Time
+t = 1e-11;                          % Total Time
 dt = 1e-14;                         % Time Step
 Psat = 1 - exp(-dt/tmn);            % Exponential Scattering Probability
 numplot = 5;                        % Number of electron plotted
 color = hsv(numplot);               % Colour Setup
+
+% Creating figure for later assigning
 f1 = figure;
 f2 = figure;
-f3 = figure;
-f4 = figure;
-f5 = figure;
-    
+
 for n = 0:dt:t 
     
+    % Applying acceleration into the velocity of electrons
     Elec(:, 3) = Elec(:, 3)+ accel*dt;
     
+    % Electrons scattering
     if Psat > rand()
         vth_ex = (vth_e/sqrt(2))*randn(num, 1); 
         vth_ey = (vth_e/sqrt(2))*randn(num, 1);
@@ -63,6 +73,7 @@ for n = 0:dt:t
         Elec(:, 4) = vth_ey;
     end
     
+    % Moving electrons
     for p = 1:1:num
         previous(p, 1) = Elec(p, 1);
         previous(p, 2) = Elec(p, 2);
@@ -74,7 +85,8 @@ for n = 0:dt:t
     set(0, 'CurrentFigure', f1)
     for q = 1:1:numplot
         title('Electrons movement');
-        plot([previous(q, 1), Elec(q, 1)], [previous(q, 2), Elec(q,2)], 'color', color(q, :))
+        plot([previous(q, 1), Elec(q, 1)], [previous(q, 2), Elec(q,2)],...
+            'color', color(q, :))
         xlim([0 L])
         ylim([0 W])
         hold on
@@ -85,11 +97,9 @@ for n = 0:dt:t
         % Looping on x-axis
         if Elec(o, 1) > L                       
             Elec(o, 1) = Elec(o, 1) - L;
-%             previous = Elec;
         end
         if Elec(o, 1) < 0
             Elec(o, 1) = Elec(o, 1) + L;
-%             previous = Elec;
         end
         % Reflecting on y-axis
         if Elec(o, 2) > W || Elec(o, 2) < 0
@@ -97,47 +107,39 @@ for n = 0:dt:t
         end
     end
     
-    % Plotting average temperature
-    vaver = mean(sqrt(Elec(:, 3).^2 + Elec(:, 4).^2)); % Average thermal velocity
-    aveT = (meff*vaver^2)/(kb);              % Average temperature
-    set(0, 'CurrentFigure', f2)
-    scatter(n, aveT, 'r.')
-    axis tight
-    title('Average temperature');
-    hold on
-    
     % Plotting Current density
-    set(0, 'CurrentFigure', f3)
+    set(0, 'CurrentFigure', f2)
+    vaver = mean(sqrt(Elec(:, 3).^2 + Elec(:, 4).^2)); % Average thermal velocity
     I = vaver*num*Ex*q_0;                      % Drift current of electron
     scatter(n, I, 'g.')
     axis tight
     title('Current density of electrons');
     hold on
-    pause(1e-7)
     
+%     pause(0.01)
 end
 
+%% 
+% The current density of the electrons in the simulation will slowly
+% converge into a value which show that the current density will start to
+% stablize after a period of time.
+
+%%
+
 % Electron Density map
-set(0, 'CurrentFigure', f4)
+figure(4)
 hist3(Elec(:, 1:2), [50 50]);
-% Eden = hist3(Elec(:, 1:2), [50 50]);
+title("Electron density map")
 
 % Temperature map
-set(0, 'CurrentFigure', f5)
-% Vend = sqrt(Elec(:, 3).^2 + Elec(:, 4).^2);
-% Tend = (meff.*Vend.^2)./kb;
-% hold on
-% hist3(Elec(:, 1:2), [50 50]);
-% Eden1 = Eden';
-% Eden1(size(Eden, 1)+1, size(Eden, 2)+1) = 0;
-% Xe = linspace(min(Elec(:, 1)), max(Elec(:, 1)), size(Eden, 1)+1);
-% Ye = linspace(min(Elec(:, 2)), max(Elec(:, 2)), size(Eden, 1)+1);
-% pcolor(Tend);
-[binx, biny] = meshgrid(0:L/50:L, 0:W/50:W);
-zcheck = zeros(51, 51);
-tempcheck = zeros(51, 51);
-counter = 0;
-vtotal = 0;
+figure(5)
+[binx, biny] = meshgrid(0:L/50:L, 0:W/50:W);% Setting the bins
+zcheck = zeros(51, 51);                     % Initialize result matrix
+tempcheck = zeros(51, 51);                  % Initialize temperature matrix
+counter = 0;                                % Initialize counter    
+vtotal = 0;                                 % Initialize total velocity
+
+% Mapping the temperature of electrons within each bin
 for i = 1:50
     txmn = binx(1,i);
     txmx = binx(1, i+1);
@@ -158,5 +160,7 @@ for i = 1:50
         counter = 0;
     end
 end
+
+% Surface plot of the temperature density map
 surf(binx, biny,zcheck)
 title("Temperature density of electrons")

@@ -1,6 +1,7 @@
-%% Assignment 3
-%% 
-% 
+%% Part 3
+% In the last part, we are now doing the full implementation of applying
+% voltage across the region with bottle-neck inserted into the electron
+% simulation with proper scaling.
 
 % Reset Everything
 close all
@@ -23,7 +24,7 @@ ny = 100;               % Width of the region
 G = sparse(nx*ny);      % Initialize a G matrix
 D = zeros(1, nx*ny);    % Initialize a matrix for G matrix operation
 S = zeros(ny, nx);      % Initialize a matrix for sigma
-sigma1 = .01;           % Setting up parameter of sigma in different region
+sigma1 = 0.01;          % Setting up parameter of sigma in different region
 sigma2 = 1;
 box = [nx*2/5 nx*3/5 ny*2/5 ny*3/5]; % Setting up the bottle neck
 
@@ -89,13 +90,12 @@ for i = 1:nx
     end
 end
 
-% Calculating the electric field from voltage
-[Ex, Ey] = gradient(X);
+% Calculating the electric field from voltage with proper scaling
+[Ex, Ey] = gradient(X*10^9);
 
 % Current Condition and variables
 num = 1e4;                              % Number of electrons
 T = 300;                                % Temperature (Kelvin)
-V = 0.1;                                % Voltage applied
 vth_e = sqrt((kb*T)/(meff));            % Thermal velocity of an electron
 vth_ex = (vth_e)*randn(num, 1);         % X-component of thermal velocity
 vth_ey = (vth_e)*randn(num, 1);         % Y-component of thermal velocity
@@ -137,11 +137,11 @@ dt = 1e-14;                         % Time Step
 Psat = 1 - exp(-dt/tmn);            % Exponential Scattering Probability
 numplot = 5;                        % Number of electron plotted
 color = hsv(numplot);               % Colour Setup
+
+% Setting figure for later assigning
 f1 = figure;
-% f2 = figure;
-% f3 = figure;
-% f4 = figure;
-% f5 = figure;
+f2 = figure;
+f3 = figure;
 
 % Setting up rectangles boundaries
 set(0, 'CurrentFigure', f1)
@@ -152,27 +152,26 @@ hold on
 % Electrons simulation
 for n = 0:dt:t 
     
-
+    % Adding appropriate acceleration into the electron velocity
     for i = 1:1:num
-        
         % Rounding position of electrons
         Dimx(i) = ceil(Elec(i, 1)*10^9);
         Dimy(i) = ceil(Elec(i, 2)*10^9);
         
         % Adding acceleration of the electric field into the electrons
         Elec(i, 3) = Elec(i, 3) + accelx(Dimy(i), Dimx(i))*dt;
-        Elec(i, 4) = Elec(i, 4) + accely(Dimy(i), Dimx(i))*dt;
-        
+        Elec(i, 4) = Elec(i, 4) + accely(Dimy(i), Dimx(i))*dt;  
     end
      
-    % Part 2 Simulation
+    % Electrons scattering
     if Psat > rand()
         vth_ex = (vth_e/sqrt(2))*randn(num, 1); 
         vth_ey = (vth_e/sqrt(2))*randn(num, 1);
         Elec(:, 3) = vth_ex;
         Elec(:, 4) = vth_ey;
     end
-           
+    
+    % Moving the electrons
     for p = 1:1:num
         previous(p, 1) = Elec(p, 1);
         previous(p, 2) = Elec(p, 2);
@@ -196,13 +195,9 @@ for n = 0:dt:t
         % Looping on x-axis
         if Elec(o, 1) > L                       
             Elec(o, 1) = Elec(o, 1) - L;
-%             Elec(o,1) = previous(o,1) + 1;
-%             previous = Elec;
         end
         if Elec(o, 1) < 0
             Elec(o, 1) = Elec(o, 1) + L;
-%             Elec(o,1) = previous(o,1) - 1;
-%             previous = Elec;
         end
         % Reflecting on y-axis
         if Elec(o, 2) > W || Elec(o, 2) < 0
@@ -238,66 +233,57 @@ for n = 0:dt:t
         end
     end
     
-%     % Plotting average temperature
-%     vaver = mean(sqrt(Elec(:, 3).^2 + Elec(:, 4).^2)); % Average thermal velocity
-%     aveT = (meff*vaver^2)/(kb);              % Average temperature
-%     set(0, 'CurrentFigure', f2)
-%     scatter(n, aveT, 'r.')
-%     axis tight
-%     title('Average temperature');
-%     hold on
-%     
-%     % Plotting Current density
-%     set(0, 'CurrentFigure', f3)
-%     I = vaver*num*Ex*q_0;                      % Drift current of electron
-%     scatter(n, I, 'g.')
-%     axis tight
-%     title('Current density of electrons');
-%     hold on
-    pause(0.01)
-%     
+%     pause(0.01)
+   
 end
 
 % Electron Density map
-% set(0, 'CurrentFigure', f4)
-% hist3(Elec(:, 1:2), [50 50]);
-% Eden = hist3(Elec(:, 1:2), [50 50]);
+set(0, 'CurrentFigure', f2)
+hist3(Elec(:, 1:2), [50 50]);
+view([20 45]);
+title("Electron density map")
 
 % Temperature map
-% set(0, 'CurrentFigure', f5)
-% Vend = sqrt(Elec(:, 3).^2 + Elec(:, 4).^2);
-% Tend = (meff.*Vend.^2)./kb;
-% hold on
-% hist3(Elec(:, 1:2), [50 50]);
-% Eden1 = Eden';
-% Eden1(size(Eden, 1)+1, size(Eden, 2)+1) = 0;
-% Xe = linspace(min(Elec(:, 1)), max(Elec(:, 1)), size(Eden, 1)+1);
-% Ye = linspace(min(Elec(:, 2)), max(Elec(:, 2)), size(Eden, 1)+1);
-% pcolor(Tend);
-% [binx, biny] = meshgrid(0:L/50:L, 0:W/50:W);
-% zcheck = zeros(51, 51);
-% tempcheck = zeros(51, 51);
-% counter = 0;
-% vtotal = 0;
-% for i = 1:50
-%     txmn = binx(1,i);
-%     txmx = binx(1, i+1);
-%     for r = 1:50
-%         tymn = biny(r, 1);
-%         tymx = biny(r+1, 1);
-%         for mm = 1:num
-%             if(Elec(mm,1)>txmn & Elec(mm,1)<txmx & Elec(mm,2)<tymx & Elec(mm,2)>tymn)
-%                 counter = counter + 1;
-%                 zcheck(i, r) = zcheck(i, r)+1;
-%                 vtotal = vtotal + sqrt(Elec(mm, 3)^2+Elec(mm, 4)^2);
-%                 if(counter ~= 0)
-%                     tempcheck(i,r) = meff*(vtotal^2)/(counter*kb);
-%                 end
-%             end
-%         end
-%         vtotal = 0;
-%         counter = 0;
-%     end
-% end
-% surf(binx, biny,zcheck)
-% title("Temperature density of electrons")
+set(0, 'CurrentFigure', f3)
+[binx, biny] = meshgrid(0:L/50:L, 0:W/50:W);
+zcheck = zeros(51, 51);
+tempcheck = zeros(51, 51);
+counter = 0;
+vtotal = 0;
+for i = 1:50
+    txmn = binx(1,i);
+    txmx = binx(1, i+1);
+    for r = 1:50
+        tymn = biny(r, 1);
+        tymx = biny(r+1, 1);
+        for mm = 1:num
+            if(Elec(mm,1)>txmn & Elec(mm,1)<txmx & Elec(mm,2)<tymx & ...
+                    Elec(mm,2)>tymn)
+                counter = counter + 1;
+                zcheck(i, r) = zcheck(i, r)+1;
+                vtotal = vtotal + sqrt(Elec(mm, 3)^2+Elec(mm, 4)^2);
+                if(counter ~= 0)
+                    tempcheck(i,r) = meff*(vtotal^2)/(counter*kb);
+                end
+            end
+        end
+        vtotal = 0;
+        counter = 0;
+    end
+end
+surf(binx, biny,zcheck)
+view([110 40]);
+title("Temperature density of electrons")
+
+%%
+% Both of the density plot shows that most electrons populate on the left
+% edge of the boxes of the bottle-neck because the voltage applied across
+% the field forces the electrons to constantly try to move toward the right
+% side of the region but they cannot pass through the bottle-neck most of
+% time hence creating a higher temperature on the left side.
+%
+%% Discussion
+% The next step to improve the simulation is to increase the mesh size of
+% the G-matrix to get more accurate electric field strength and
+% acceleration on each electrons on its respective location without
+% rounding its location within the region.

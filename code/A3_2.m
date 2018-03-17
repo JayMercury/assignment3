@@ -1,6 +1,8 @@
-%% Part 2(a)
-% In part 2(a), we are now trying to model the current flow in the region
-% with a bottle neck added.
+%% Part 2
+% In part 2,by calculating the potential with the bottle-neck and making a
+% vector plot for the electric field, we are familiarizing ourselves with
+% assignment 2 again to check if everything we have done is working as
+% intended for the full implementation in the last part of the assignment.
 
 % Reset Everything
 close all
@@ -12,11 +14,11 @@ ny = nx*3/2;            % Width of the region, 3/2 of length
 G = sparse(nx*ny);      % Initialize a G matrix
 D = zeros(1, nx*ny);    % Initialize a matrix for G matrix operation
 S = zeros(ny, nx);      % Initialize a matrix for sigma
-sigma1 = .01;             % Setting up parameter of sigma in different region
+sigma1 = .01;           % Setting up parameter of sigma in different region
 sigma2 = 1;
 box = [nx*2/5 nx*3/5 ny*2/5 ny*3/5]; % Setting up the bottle neck
 
-%Sigma matrix setup
+% Sigma matrix setup
 sigma = zeros(nx, ny);
 for i = 1:nx
     for j = 1:ny
@@ -66,13 +68,6 @@ for i = 1:nx
     end
 end
 
-% % Creating a surface plot for sigma
-% figure(1)
-% surf(sigma);
-% axis tight
-% view([40 30]);
-% title("Surface plot of sigma")
-
 % Calculating the voltage
 V = G\D';
 
@@ -94,33 +89,9 @@ title("Surface plot of voltage with bottle neck condition")
 
 % Calculating the electric field from voltage
 [Ex, Ey] = gradient(X);
-% 
-% % Creating surface plots for x and y component for electric field
-% figure(3)
-% surf(-Ex)
-% axis tight
-% view([40 30]);
-% title("Surface plot of x-component of electric field")
-% 
-% figure(4)
-% surf(-Ey)
-% axis tight
-% view([40 30]);
-% title("Surface plot of y-component of electric field")
-% 
-% % Calculating the current density
-% Jx = sigma'.*-Ex;
-% Jy = sigma'.*-Ey;
-% J = sqrt(Jx.^2 + Jy.^2);
-% 
-% % Creating a surface plot for the current density
-% figure(5)
-% surf(J)
-% axis tight
-% view([40 30]);
-% title("Surface plot of current density")
 
 % Vector plot of electric field
 figure(2)
 quiver(-Ex, -Ey);
 axis tight
+title("Vector plot of electric field")
